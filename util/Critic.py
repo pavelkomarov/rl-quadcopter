@@ -7,17 +7,9 @@ class Critic:
 	# @param state_size (int): Dimension of each state
 	# @param action_size (int): Dimension of each action
 	def __init__(self, state_size, action_size):
-		self.state_size = state_size
-		self.action_size = action_size
-
-		# Initialize any other variables here
-		self.build_model()
-
-	def build_model(self):
-		"""Build a critic (value) network that maps (state, action) pairs -> Q-values."""
 		# Define input layers
-		states = layers.Input(shape=(self.state_size,), name='states')
-		actions = layers.Input(shape=(self.action_size,), name='actions')
+		states = layers.Input(shape=(state_size,), name='states')
+		actions = layers.Input(shape=(action_size,), name='actions')
 
 		# Add hidden layer(s) for state pathway
 		net_states = layers.Dense(units=32, activation='relu')(states)

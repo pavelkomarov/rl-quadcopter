@@ -6,7 +6,6 @@ class ReplayBuffer:
 
 	## Initialize a ReplayBuffer object.
 	# @param buffer_size: maximum size of buffer
-	# @param batch_size: size of each training batch
 	def __init__(self, buffer_size):
 		self.memory = deque(maxlen=buffer_size)
 		self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
