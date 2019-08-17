@@ -5,7 +5,7 @@ class Task():
 	"""Task (environment) that defines the goal and provides feedback to the agent."""
 	# State = [x, y, z, phi, theta, psi, v_x, v_y, v_z, w_phi, w_theta, w_psi]
 	# default task is start at rest at the origin and end at rest at (10,0,0)
-	def __init__(self, init_state=[0.]*12, runtime=5., target_state=[10.]+[0.]*11):
+	def __init__(self, init_state=[0.]*12, runtime=10., target_state=[10.]+[0.]*11):
 		"""Initialize a Task object.
 		Params
 		======
@@ -20,25 +20,21 @@ class Task():
 		
 		self.sim = PhysicsSim(init_state[:6], init_state[6:9], init_state[9:], runtime)
 		
-		self.action_low = -900
+		self.action_low = 0
 		self.action_high = 900
 		self.state_size = 12 # state now has 12 entries, not 6*3 repeats
 		self.action_size = 4
 
 	# reward based on distance to goal and instantaneous force applied (minimize accelerations, not velocities)
-	def get_reward(self):
-		if np.linalg.norm(np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v)) - self.target_state) < 1:
-			return 100
+	def get_reward(self, done):
+		state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
+		distance = np.linalg.norm(state[:3]-self.target_state[:3])
+		if distance < 1: return 10000
 
-		#kinetic_energy = 0.5*self.sim.mass*np.linalg.norm(self.sim.v)**2
-		#rotational_energy = 0.5*np.dot(self.sim.moments_of_inertia, self.sim.angular_v**2)
 		force = self.sim.mass*np.linalg.norm(self.sim.linear_accel)
-		torque = np.dot(self.sim.moments_of_inertia, self.sim.angular_accels) # this isn't quite right
-		distance = np.linalg.norm(self.sim.pose[:3]-self.target_state[:3])
-		# I want the correct angles and velocities as I near the target
-		pose_vel_diff = 0.5/distance*np.linalg.norm(np.concatenate((self.sim.pose[3:], self.sim.v, self.sim.angular_v))
-													-self.target_state[3:])
-		return -force - torque - distance - pose_vel_diff
+		torque = np.linalg.norm(self.sim.moments_of_inertia*self.sim.angular_accels) # close enough
+
+		return max(0, 100 - distance - 0.01*(force/10 - torque*10)) # clamp at zero, because penalty makes it commit suicide
 	
 	## Uses action to obtain next state, reward, done.
 	# Action-repeats just does the same action three times and concatenates raw positions as a state. I've
@@ -47,7 +43,7 @@ class Task():
 	def step(self, rotor_speeds):
 		#state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
 		done = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
-		reward = self.get_reward()
+		reward = self.get_reward(done)
 		next_state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
 		return next_state, reward, done
 

@@ -50,10 +50,11 @@ class Agent():
 			self.learn(self.memory.sample(self.batch_size))
 
 	## Returns actions for given state(s) as per current policy.
-	def act(self, state):
+	def act(self, state, train=True):
 		state = np.reshape(state, (-1, self.state_size)) # 2D num states given x state size
 		action = self.actor.model.predict(state)[0]
-		return list(action + self.noise.sample())  # add some noise for exploration
+		noise = self.noise.sample() if train else 0 # add some noise for exploration
+		return list(action + noise)
 
 	## Update policy and value parameters using given batch of experience tuples.
 	def learn(self, experiences):
@@ -74,7 +75,7 @@ class Agent():
 		self.critic.model.train_on_batch(x=[states, actions], y=Q_targets)
 
 		# Train actor model (local)
-		action_gradients = np.reshape(self.critic_local.get_action_gradients([states, actions, 0]), (-1, self.action_size))
+		action_gradients = np.reshape(self.critic.get_action_gradients([states, actions, 0]), (-1, self.action_size))
 		self.actor.train_fn([states, action_gradients, 1])  # custom training function
 
 		# Soft-update target models
@@ -91,9 +92,11 @@ class Agent():
 		# w_t = tau*w_l + (1-tau)*w_t -> w_t += tau*(w_l - w_t), stepping magnitude tau from targets to local
 		target.model.set_weights(self.tau*local_weights + (1 - self.tau)*target_weights)
 
-	def save(self, fileName):
+	## Store the policy to a file
+	def save_policy(self, fileName):
 		self.actor.model.save(fileName)
 
-	@staticmethod
-	def load(fileName):
-		return load_model(fileName)
+	## load back the policy from the file
+	def load_policy(self, fileName):
+		self.actor.model = load_model(fileName)
+
