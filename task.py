@@ -5,7 +5,7 @@ class Task():
 	"""Task (environment) that defines the goal and provides feedback to the agent."""
 	# State = [x, y, z, phi, theta, psi, v_x, v_y, v_z, w_phi, w_theta, w_psi]
 	# default task is start at rest at the origin and end at rest at (10,0,0)
-	def __init__(self, init_state=[0.]*12, runtime=10., target_state=[10.]+[0.]*11):
+	def __init__(self, init_state=[0.]*12, runtime=5., target_state=[10., 3., 5.]+[0.]*9):
 		"""Initialize a Task object.
 		Params
 		======
@@ -26,15 +26,20 @@ class Task():
 		self.action_size = 4
 
 	# reward based on distance to goal and instantaneous force applied (minimize accelerations, not velocities)
-	def get_reward(self, done):
-		state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
-		distance = np.linalg.norm(state[:3]-self.target_state[:3])
-		if distance < 1: return 10000
+	def get_reward(self, rotor_speeds):
+		#state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
+		#distance = np.linalg.norm(state[:3]-self.target_state[:3])
+		#return np.tanh(1 - 0.003*(abs(self.sim.pose[:2] - self.target_state[:2]))).sum()
+		distance = np.linalg.norm(self.target_state[:3] - self.sim.pose[:3])
+		# reward for staying alive + rbf centered around destination + reward for not spinning the motors too fast
+		return 0.5 + 0.5*np.exp(-distance**2 / (2*(50**2))) - 0.2*(sum(rotor_speeds) / 3600)**2
+		#distance = dxy + dz*(dxy < 1)
+		#if distance < 1: return 10000
 
-		force = self.sim.mass*np.linalg.norm(self.sim.linear_accel)
-		torque = np.linalg.norm(self.sim.moments_of_inertia*self.sim.angular_accels) # close enough
+		#force = self.sim.mass*np.linalg.norm(self.sim.linear_accel)
+		#torque = np.linalg.norm(self.sim.moments_of_inertia*self.sim.angular_accels) # close enough
 
-		return max(0, 100 - distance - 0.01*(force/10 - torque*10)) # clamp at zero, because penalty makes it commit suicide
+		#return max(0, 100 - distance)# - 0.01*(force/10 - torque*10)) # clamp at zero, because penalty makes it commit suicide
 	
 	## Uses action to obtain next state, reward, done.
 	# Action-repeats just does the same action three times and concatenates raw positions as a state. I've
@@ -43,7 +48,7 @@ class Task():
 	def step(self, rotor_speeds):
 		#state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
 		done = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
-		reward = self.get_reward(done)
+		reward = self.get_reward(rotor_speeds)
 		next_state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
 		return next_state, reward, done
 

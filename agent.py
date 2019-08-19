@@ -25,7 +25,7 @@ class Agent():
 		self.actor_.model.set_weights(self.actor.model.get_weights())
 
 		# Noise process
-		self.noise = Noise(self.action_size, mu=0, theta=0.15, sigma=0.2)
+		self.noise = Noise(self.action_size, mu=0, theta=0.15, sigma=5)
 
 		# Replay memory
 		self.batch_size = 64
