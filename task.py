@@ -32,7 +32,7 @@ class Task():
 		#return np.tanh(1 - 0.003*(abs(self.sim.pose[:2] - self.target_state[:2]))).sum()
 		distance = np.linalg.norm(self.target_state[:3] - self.sim.pose[:3])
 		# reward for staying alive + rbf centered around destination + reward for not spinning the motors too fast
-		return 0.5 + 0.5*np.exp(-distance**2 / (2*(50**2))) - 0.2*(sum(rotor_speeds) / 3600)**2
+		return 0.5 + 0.5*np.exp(-distance**2 / (2*(20**2))) - 0.2*sum(np.array(rotor_speeds)**2) / 3240000 # 900**2 * 4
 		#distance = dxy + dz*(dxy < 1)
 		#if distance < 1: return 10000
 
@@ -50,7 +50,7 @@ class Task():
 		done = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
 		reward = self.get_reward(rotor_speeds)
 		next_state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
-		return next_state, reward, done
+		return next_state, reward, done, self.sim.time
 
 	def reset(self):
 		"""Reset the sim to start a new episode."""
