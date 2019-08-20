@@ -8,7 +8,7 @@ class PolicySearch_Agent():
 		self.task = task
 
 		self.w = np.random.normal(size=(12, 4), scale=10)
-		self.b = np.random.normal(size=(4,), scale=1)
+		self.b = np.random.normal(loc=500, size=(4,), scale=10)
 
 		# Score tracker and learning parameters
 		self.best_w = None
@@ -35,9 +35,8 @@ class PolicySearch_Agent():
 			self.learn()
 
 	# Choose action based on given state and policy
-	def act(self, state):		
-		action = np.dot(state, self.w) + self.b # simple linear policy
-		return action
+	def act(self, state):
+		return np.dot(state, self.w) + self.b # simple linear policy
 
 	# Learn by random policy search, using a reward-based score
 	def learn(self):

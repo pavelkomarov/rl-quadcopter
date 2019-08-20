@@ -32,7 +32,7 @@ class Task():
 		#return np.tanh(1 - 0.003*(abs(self.sim.pose[:2] - self.target_state[:2]))).sum()
 		distance = np.linalg.norm(self.target_state[:3] - self.sim.pose[:3])
 		# reward for staying alive + rbf centered around destination + reward for not spinning the motors too fast
-		return 0.5 + 0.5*np.exp(-distance**2 / (2*(20**2))) - 0.2*sum(np.array(rotor_speeds)**2) / 3240000 # 900**2 * 4
+		return 0.5 + 0.5*np.exp(-distance**2 / (2*(20**2))) + 0.2*np.exp(-sum(np.array(rotor_speeds)**2) / 3240000) + 0.2*np.exp(-np.var(rotor_speeds) / 202500)
 		#distance = dxy + dz*(dxy < 1)
 		#if distance < 1: return 10000
 
