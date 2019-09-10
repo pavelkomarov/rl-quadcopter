@@ -5,7 +5,7 @@ class Task():
 	"""Task (environment) that defines the goal and provides feedback to the agent."""
 	# State = [x, y, z, phi, theta, psi, v_x, v_y, v_z, w_phi, w_theta, w_psi]
 	# default task is start at rest at the origin and end at rest at (10,0,0)
-	def __init__(self, init_state=[0.]*12, runtime=5., target_state=[10., 3., 5.]+[0.]*9):
+	def __init__(self, init_state=[0.]*12, runtime=5., target_state=[0., 0., 10.]+[0.]*9):
 		"""Initialize a Task object.
 		Params
 		======
@@ -26,29 +26,25 @@ class Task():
 		self.action_size = 4
 
 	# reward based on distance to goal and instantaneous force applied (minimize accelerations, not velocities)
-	def get_reward(self, rotor_speeds):
-		#state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
-		#distance = np.linalg.norm(state[:3]-self.target_state[:3])
-		#return np.tanh(1 - 0.003*(abs(self.sim.pose[:2] - self.target_state[:2]))).sum()
-		distance = np.linalg.norm(self.target_state[:3] - self.sim.pose[:3])
-		# reward for staying alive + rbf centered around destination + reward for not spinning the motors too fast
-		return 0.5 + 0.5*np.exp(-distance**2 / (2*(20**2))) + 0.2*np.exp(-sum(np.array(rotor_speeds)**2) / 3240000) + 0.2*np.exp(-np.var(rotor_speeds) / 202500)
-		#distance = dxy + dz*(dxy < 1)
-		#if distance < 1: return 10000
+	def get_reward(self, rotor_speeds, done_):
+		if done_ and self.sim.time < self.sim.runtime: # if the quadcopter crashes
+			return -1, True # punish, and we're done
 
-		#force = self.sim.mass*np.linalg.norm(self.sim.linear_accel)
-		#torque = np.linalg.norm(self.sim.moments_of_inertia*self.sim.angular_accels) # close enough
+		if self.sim.pose[2] < 10: # if haven't reached the target height yet, give proportional reward
+			# always +, more + closer to target
+			#print(self.sim.v[2])
+			return np.clip(self.sim.v[2]/10 + (10 - np.abs(self.target_state[2] - self.sim.pose[2]))/10, -1, 1), done_
+		else: # if reach the target height, give bonus reward, and we're done
+			return 1 + (self.sim.runtime - self.sim.time), True
 
-		#return max(0, 100 - distance)# - 0.01*(force/10 - torque*10)) # clamp at zero, because penalty makes it commit suicide
-	
 	## Uses action to obtain next state, reward, done.
 	# Action-repeats just does the same action three times and concatenates raw positions as a state. I've
 	# chosen to instead get rid of this and return velocities directly, in keeping with my 12-entry state.
 	# Might make this all noisier, but shouldnt I just be able to triple the interval between time steps?
 	def step(self, rotor_speeds):
 		#state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
-		done = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
-		reward = self.get_reward(rotor_speeds)
+		done_ = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
+		reward, done = self.get_reward(rotor_speeds, done_)
 		next_state = np.concatenate((self.sim.pose, self.sim.v, self.sim.angular_v))
 		return next_state, reward, done, self.sim.time
 
